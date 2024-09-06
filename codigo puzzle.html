@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle 3x3</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .puzzle {
+            width: 300px;
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .casilla {
+            width: 90px;
+            height: 90px;
+            border: 1px solid #030101;
+            background-color: skyblue;
+            font-size: 36px;
+            text-align: center;
+            line-height: 90px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .casilla:hover {
+            background-color: #f0f0f0;
+        }
+
+        .libre {
+            background-color: #ccc;
+            cursor: default;
+        }
+
+        button {
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .movimientos-grid {
+            display: flex;
+            flex-wrap: wrap;
+            width: auto;
+        }
+
+        .movimientos-grid .puzzle {
+            padding: 10px;
+        }
+
+        .movimientos-grid .casilla {
+            margin: 0;
+            border: none;
+            background-color: #e0e0e0;
+            color: #333333;
+        }
+
+        .movimientos-grid .libre {
+            background-color: #ccc;
+        }
+
+        .conjunto {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .conjunto div {
+            margin: 5px;
+        }
+
+        .estado {
+            font-family: monospace;
+            font-size: 18px;
+            white-space: pre;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <button onclick="mezclar()">Desordenar</button>
+    <button onclick="resolver()">Resolver</button>
+    <button onclick="desordenEspecifico()">Desordenar Específico</button>
+
+    <div class="puzzle">
+        <div class="casilla" id="c1">1</div>
+        <div class="casilla" id="c2">2</div>
+        <div class="casilla" id="c3">3</div>
+        <div class="casilla" id="c4">4</div>
+        <div class="casilla" id="c5">5</div>
+        <div class="casilla" id="c6">6</div>
+        <div class="casilla" id="c7">7</div>
+        <div class="casilla" id="c8">8</div>
+        <div class="casilla libre" id="c9"></div>
+    </div>
+
+    <strong>Movimientos:</strong>
+    <div class="movimientos-grid" id="movimientosGrid"></div>
+
+    <div class="conjunto">
+        <strong>Frontera:</strong>
+        <div id="frontera" class="estado"></div>
+
+        <strong>Conjunto Explorador:</strong>
+        <div id="explorado" class="estado"></div>
+    </div>
+
+    <script>
+        let casillas = Array.from(document.querySelectorAll('.casilla'));
+        let libre = document.querySelector('.libre');
+        let movimientosGrid = document.getElementById('movimientosGrid');
+        let fronteraDiv = document.getElementById('frontera');
+        let exploradoDiv = document.getElementById('explorado');
+
+        function mezclar() {
+            let nums = casillas.filter(casilla => casilla !== libre).map(casilla => parseInt(casilla.innerText));
+            let shuffled = nums.sort(() => Math.random() - 0.5);
+
+            casillas.forEach((casilla, index) => {
+                if (casilla !== libre) {
+                    casilla.innerText = shuffled.shift();
+                }
+            });
+
+            libre.innerText = '';
+            libre.classList.add('libre');
+        }
+
+        function desordenEspecifico() {
+            const valores = [4, 1, 3, 2, 8, 5, 7, '', 6];
+            casillas.forEach((casilla, index) => {
+                casilla.innerText = valores[index];
+                if (valores[index] === '') {
+                    casilla.classList.add('libre');
+                    libre = casilla;
+                } else {
+                    casilla.classList.remove('libre');
+                }
+            });
+        }
+
+        function moverCasilla(casilla) {
+            let index = casillas.indexOf(casilla);
+            let libreIndex = casillas.indexOf(libre);
+
+            if ((index === libreIndex - 1) || 
+                (index === libreIndex + 1) || 
+                (index === libreIndex - 3) || 
+                (index === libreIndex + 3)) {
+
+                libre.innerText = casilla.innerText;
+                casilla.innerText = '';
+                libre.classList.remove('libre');
+                casilla.classList.add('libre');
+                libre = casilla;
+            }
+        }
+
+        function resolver() {
+            let estadoInicial = casillas.map(casilla => casilla.innerText || "0").join("");
+            let estadoObjetivo = "123456780";
+
+            let frontera = [{ estado: estadoInicial, camino: [] }];
+            let explorado = new Set();
+            let fronteraEstados = [];
+            let exploradoEstados = [];
+
+            function mostrarEstados() {
+                fronteraEstados = frontera.map(nodo => nodo.estado).join("\n");
+                exploradoEstados = Array.from(explorado).join("\n");
+                fronteraDiv.textContent = fronteraEstados;
+                exploradoDiv.textContent = exploradoEstados;
+            }
+
+            mostrarEstados();
+
+            while (frontera.length > 0) {
+                let nodoActual = frontera.shift();
+                let estadoActual = nodoActual.estado;
+                let caminoActual = nodoActual.camino;
+
+                if (estadoActual === estadoObjetivo) {
+                    animarSolucion(caminoActual);
+                    return;
+                }
+
+                explorado.add(estadoActual);
+                mostrarEstados();
+
+                let movimientos = movimientosPosibles(estadoActual);
+                let hermanos = [];
+
+                for (let movimiento of movimientos) {
+                    let nuevoEstado = aplicarMovimiento(estadoActual, movimiento);
+                    if (!explorado.has(nuevoEstado) && !frontera.some(n => n.estado === nuevoEstado)) {
+                        hermanos.push({ estado: nuevoEstado, camino: [...caminoActual, movimiento] });
+                    }
+                }
+
+                frontera.push(...hermanos);
+                mostrarEstados();
+            }
+        }
+
+        function movimientosPosibles(estado) {
+            let indiceLibre = estado.indexOf("0");
+            let movimientos = [];
+
+            if (indiceLibre % 3 !== 0) movimientos.push(-1); 
+            if (indiceLibre % 3 !== 2) movimientos.push(1);  
+            if (indiceLibre > 2) movimientos.push(-3);       
+            if (indiceLibre < 6) movimientos.push(3);        
+
+            return movimientos;
+        }
+
+        function aplicarMovimiento(estado, movimiento) {
+            let indiceLibre = estado.indexOf("0");
+            let nuevoIndice = indiceLibre + movimiento;
+            let nuevoEstado = estado.split("");
+
+            [nuevoEstado[indiceLibre], nuevoEstado[nuevoIndice]] = [nuevoEstado[nuevoIndice], nuevoEstado[indiceLibre]];
+
+            return nuevoEstado.join("");
+        }
+
+        function animarSolucion(camino) {
+            if (camino.length === 0) return;
+            let movimiento = camino.shift();
+            let indiceLibre = casillas.map(casilla => casilla.innerText || "0").indexOf("0");
+            let nuevoIndice = indiceLibre + movimiento;
+
+            moverCasilla(casillas[nuevoIndice]);
+            mostrarEstado();
+
+            setTimeout(() => animarSolucion(camino), 500); 
+        }
+
+        function mostrarEstado() {
+            let nuevoContenedor = document.createElement('div');
+            nuevoContenedor.classList.add('puzzle');
+
+            casillas.forEach((casilla) => {
+                let nuevoElemento = document.createElement('div');
+                nuevoElemento.classList.add('casilla');
+                if (casilla.classList.contains('libre')) {
+                    nuevoElemento.classList.add('libre');
+                }
+                nuevoElemento.innerText = casilla.innerText || '';
+                nuevoContenedor.appendChild(nuevoElemento);
+            });
+
+            movimientosGrid.appendChild(nuevoContenedor);
+        }
+
+        casillas.forEach((casilla) => {
+            casilla.addEventListener('click', () => {
+                if (!casilla.classList.contains('libre')) {
+                    moverCasilla(casilla);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
